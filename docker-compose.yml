@@ -1,0 +1,85 @@
+services:
+
+  backend1:
+    build: ./backend
+    container_name: backend1
+    environment:
+      - INSTANCE_ID=backend1
+
+  backend2:
+    build: ./backend
+    container_name: backend2
+    environment:
+      - INSTANCE_ID=backend2
+
+  backend3:
+    build: ./backend
+    container_name: backend3
+    environment:
+      - INSTANCE_ID=backend3
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: nginx
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
+
+  prometheus:
+    image: prom/prometheus:v3.13.5
+    container_name: prometheus
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+    depends_on:
+      - backend1
+      - backend2
+      - backend3
+
+  grafana:
+    image: grafana/grafana:12.4.0
+    container_name: grafana
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - prometheus
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: cadvisor
+
+    ports:
+      - "8080:8080"
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+
+    privileged: true
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:1.4.2
+    container_name: nginx-exporter
+
+    command:
+      - --nginx.scrape-uri=http://nginx/stub_status
+
+    ports:
+      - "9113:9113"
+
+    depends_on:
+      - nginx
